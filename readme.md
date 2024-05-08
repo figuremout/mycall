@@ -56,7 +56,7 @@ $ sudo make -j$(nproc)
 3. Install the kernel and reboot
 ```bash
 $ sudo make modules_install install
-$ shutdown -r now
+$ reboot
 ```
 
 4. Test with my ps/pstree command.

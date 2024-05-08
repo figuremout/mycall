@@ -46,7 +46,7 @@ void usage()
 	printf("Options:\n");
 	printf("\t-h Print help and exit.\n");
 	printf("\t-p Select by pid.\n");
-	printf("\t-n Specify the syscall number instead of reading from /sys/module/mymod/parameters/MYCALL_NUM.\n");
+	printf("\t-n Specify the syscall number.\n");
 
 	return;
 }
@@ -73,21 +73,21 @@ int main(int argc, char *argv[])
 		FILE *fp;
 		char buf[10];
 
-    		fp = fopen("/sys/module/mymod/parameters/MYCALL_NUM", "r");
-    		if (fp == NULL) {
-    		    perror("open");
-    		    exit(1);
-    		}
+		fp = fopen("/sys/module/mymod/parameters/MYCALL_NUM", "r");
+		if (fp == NULL) {
+			perror("open");
+			exit(1);
+		}
 
-    		if (fgets(buf, sizeof(buf), fp) == NULL) {
-    		    perror("read");
-		    fclose(fp);
-    		    exit(1);
-    		}
+		if (fgets(buf, sizeof(buf), fp) == NULL) {
+			perror("read");
+			fclose(fp);
+			exit(1);
+		}
 
-    		fclose(fp);
+		fclose(fp);
 
-    		MYCALL_NUM = atoi(buf);
+		MYCALL_NUM = atoi(buf);
 	}
 
 	if (MYCALL_NUM <= 0) {

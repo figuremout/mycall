@@ -1,5 +1,5 @@
 CC		:= gcc
-CFLAGS		:= -Wall -std=gnu99 # c99
+CFLAGS		:= -Wall -std=gnu99
 obj-m		:= mymod.o
 CURRENT_PATH	:= $(shell pwd)
 LINUX_KERNEL	:= $(shell uname -r)

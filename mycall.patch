@@ -1,0 +1,107 @@
+diff -urpN -X linux-5.15.157/Documentation/dontdiff linux-5.15.157-vanilla/arch/x86/entry/syscalls/syscall_64.tbl linux-5.15.157/arch/x86/entry/syscalls/syscall_64.tbl
+--- linux-5.15.157-vanilla/arch/x86/entry/syscalls/syscall_64.tbl	2024-04-27 23:05:29.000000000 +0800
++++ linux-5.15.157/arch/x86/entry/syscalls/syscall_64.tbl	2024-05-07 20:03:14.735636899 +0800
+@@ -343,6 +343,7 @@
+ 332	common	statx			sys_statx
+ 333	common	io_pgetevents		sys_io_pgetevents
+ 334	common	rseq			sys_rseq
++335	64	mycall			sys_mycall
+ # don't use numbers 387 through 423, add new calls after the last
+ # 'common' entry
+ 424	common	pidfd_send_signal	sys_pidfd_send_signal
+diff -urpN -X linux-5.15.157/Documentation/dontdiff linux-5.15.157-vanilla/Makefile linux-5.15.157/Makefile
+--- linux-5.15.157-vanilla/Makefile	2024-04-27 23:05:29.000000000 +0800
++++ linux-5.15.157/Makefile	2024-05-06 21:29:10.943893533 +0800
+@@ -1159,7 +1159,7 @@ export MODORDER := $(extmod_prefix)modul
+ export MODULES_NSDEPS := $(extmod_prefix)modules.nsdeps
+ 
+ ifeq ($(KBUILD_EXTMOD),)
+-core-y			+= kernel/ certs/ mm/ fs/ ipc/ security/ crypto/
++core-y			+= kernel/ certs/ mm/ fs/ ipc/ security/ crypto/ mycall/
+ core-$(CONFIG_BLOCK)	+= block/
+ core-$(CONFIG_IO_URING)	+= io_uring/
+ 
+diff -urpN -X linux-5.15.157/Documentation/dontdiff linux-5.15.157-vanilla/mycall/Makefile linux-5.15.157/mycall/Makefile
+--- linux-5.15.157-vanilla/mycall/Makefile	1970-01-01 08:00:00.000000000 +0800
++++ linux-5.15.157/mycall/Makefile	2024-05-06 21:22:38.712404869 +0800
+@@ -0,0 +1 @@
++obj-y := mycall.o
+diff -urpN -X linux-5.15.157/Documentation/dontdiff linux-5.15.157-vanilla/mycall/mycall.c linux-5.15.157/mycall/mycall.c
+--- linux-5.15.157-vanilla/mycall/mycall.c	1970-01-01 08:00:00.000000000 +0800
++++ linux-5.15.157/mycall/mycall.c	2024-05-07 16:01:41.503892259 +0800
+@@ -0,0 +1,75 @@
++#include <linux/sched.h>
++#include <linux/init_task.h>
++#include <linux/kernel.h>
++#include <linux/slab.h>
++#include <linux/uaccess.h>
++#include <linux/list.h>
++#include <linux/syscalls.h>
++
++#define MAX_PROCS 1024
++#define TASK_COMM_LEN 16
++#define PROC_NAME "mycall_num"
++
++struct process {
++        int pid;
++        int ppid;
++        char cmd[TASK_COMM_LEN];
++};
++
++/*
++ * Retrieve process info
++ */
++void dfs_procs(struct task_struct *p_task, struct process *procs,
++	       int *procs_num)
++{
++	struct task_struct *child;
++
++	// check if reach max
++	if (*procs_num >= MAX_PROCS)
++		return;
++
++	procs[*procs_num].pid = p_task->pid;
++	procs[*procs_num].ppid = p_task->parent->pid;
++	strncpy(procs[*procs_num].cmd, p_task->comm,
++		sizeof(procs[*procs_num].cmd));
++
++	*procs_num += 1;
++
++	// iterate over children
++	list_for_each_entry(child, &p_task->children, sibling) {
++		dfs_procs(child, procs, procs_num);
++	}
++	return;
++}
++
++/*
++ * Define a new syscall
++ * Return number of procs
++ */
++SYSCALL_DEFINE1(mycall, char __user *, buf)
++{
++	unsigned long not_copied;
++	struct process *procs;
++	int procs_num;
++
++	pr_info("Called mysyscall\n");
++
++	procs_num = 0;
++	procs = (struct process *)kmalloc(MAX_PROCS * sizeof(struct process),
++					  GFP_KERNEL);
++	if (!procs) {
++		pr_err("Failed to allocate memory.\n");
++		return -ENOMEM;
++	}
++	dfs_procs(&init_task, procs, &procs_num);
++
++	not_copied = copy_to_user((struct process *)buf, procs,
++				  procs_num * sizeof(struct process));
++	if (not_copied != 0) {
++		pr_err("Failed to copy %lu bytes to user space.\n", not_copied);
++		return -EFAULT; // Bad address
++	}
++	kfree(procs);
++
++	return procs_num;
++}

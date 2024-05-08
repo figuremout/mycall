@@ -8,7 +8,7 @@
 int num_procs = 0;
 struct process procs[MAX_PROCS];
 int specific_pid = -1;
-int mycall_num = -1;
+int MYCALL_NUM = -1;
 
 #ifdef PSTREE
 void print_child(int ppid, int level)
@@ -42,12 +42,11 @@ void usage()
 {
 	printf("ps/pstree - Minimal version of ps command relying on self-defined syscall.\n");
 	printf("Usage:\n");
-	printf("\tps/pstree [-h] [-p pid] [-n mycall_num]\n");
+	printf("\tps/pstree [-h] [-p pid] [-n MYCALL_NUM]\n");
 	printf("Options:\n");
 	printf("\t-h Print help and exit.\n");
 	printf("\t-p Select by pid.\n");
-	printf("\t-n Specify the syscall number instead of reading from /proc/%s.\n",
-	       PROC_NAME);
+	printf("\t-n Specify the syscall number instead of reading from /sys/module/mymod/parameters/MYCALL_NUM.\n");
 
 	return;
 }
@@ -61,7 +60,7 @@ int main(int argc, char *argv[])
 			i++;
 		} else if (strcmp(argv[i], "-n") == 0 &&
 			   i + 1 < argc) { // -n flag
-			mycall_num = atoi(argv[i + 1]);
+			MYCALL_NUM = atoi(argv[i + 1]);
 			i++;
 		} else if (strcmp(argv[i], "-h") == 0) { // -h flag
 			usage();
@@ -69,27 +68,35 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	// read mycall_num from /proc
-	if (mycall_num == -1) {
-		char proc_path[256];
-		sprintf(proc_path, "/proc/%s", PROC_NAME);
-		FILE *fp = fopen(proc_path, "r");
-		if (fp == NULL) {
-			perror("Failed to open /proc file.");
-			usage();
-			exit(EXIT_FAILURE);
-		}
-		fscanf(fp, "%d", &mycall_num);
-		fclose(fp);
+	// read MYCALL_NUM from module param
+	if (MYCALL_NUM == -1) {
+		FILE *fp;
+		char buf[10];
+
+    		fp = fopen("/sys/module/mymod/parameters/MYCALL_NUM", "r");
+    		if (fp == NULL) {
+    		    perror("open");
+    		    exit(1);
+    		}
+
+    		if (fgets(buf, sizeof(buf), fp) == NULL) {
+    		    perror("read");
+		    fclose(fp);
+    		    exit(1);
+    		}
+
+    		fclose(fp);
+
+    		MYCALL_NUM = atoi(buf);
 	}
 
-	if (mycall_num <= 0) {
+	if (MYCALL_NUM <= 0) {
 		fprintf(stderr, "Invalid or no MYCALL_NUM provided.\n");
 		usage();
 		exit(EXIT_FAILURE);
 	}
 
-	int ret = syscall(mycall_num, procs);
+	int ret = syscall(MYCALL_NUM, procs);
 	if (ret < 0) {
 		perror("Error: "); // print error
 		usage();

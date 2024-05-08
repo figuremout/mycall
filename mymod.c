@@ -10,13 +10,9 @@
 #include <linux/semaphore.h>
 #include <linux/slab.h>
 #include <linux/types.h>
-#include <linux/uaccess.h>
 #include <linux/version.h>
-#include <linux/proc_fs.h>
-#include <linux/uaccess.h>
 #include "mycall.h"
 
-static struct proc_dir_entry *proc_entry;
 static int MYCALL_NUM;
 static long (*anything_saved)(void); // preserve the original syscall
 unsigned long *sys_call_table_addr;
@@ -87,19 +83,6 @@ asmlinkage long sys_mycall(struct pt_regs *regs)
 	return procs_num;
 }
 
-static ssize_t read_proc(struct file *file, char __user *user_buf, size_t count,
-			 loff_t *ppos)
-{
-	char buffer[16];
-	int len = snprintf(buffer, sizeof(buffer), "%d\n", MYCALL_NUM);
-
-	return simple_read_from_buffer(user_buf, count, ppos, buffer, len);
-}
-
-static const struct proc_ops proc_fops = {
-	.proc_read = read_proc,
-};
-
 /*
  * Disable cr0 WP, return origin value of cr0
  */
@@ -153,12 +136,6 @@ static int __init mymod_init(void)
 		return -EINVAL; // Invalid argument
 	}
 
-	// write syscall num into /proc
-	proc_entry = proc_create(PROC_NAME, 0444, NULL, &proc_fops);
-	if (!proc_entry) {
-		pr_err("Failed to create /proc/%s\n", PROC_NAME);
-		return -ENOMEM;
-	}
 	pr_info("Module loaded, MYCALL_NUM=%d\n", MYCALL_NUM);
 
 	register_kprobe(&kp);
@@ -175,14 +152,10 @@ static void __exit mymod_exit(void)
 	remove_syscall();
 
 	unregister_kprobe(&kp);
-	if (proc_entry) {
-		remove_proc_entry(PROC_NAME, NULL);
-		pr_info("/proc/%s removed\n", PROC_NAME);
-	}
 	pr_info("Goodbye!\n");
 }
 
-module_param(MYCALL_NUM, int, S_IRUSR); // perm: Owner readable
+module_param(MYCALL_NUM, int, S_IRUGO); // perm: 0444 readable
 module_init(mymod_init);
 module_exit(mymod_exit);
 

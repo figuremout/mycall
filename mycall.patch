@@ -1,4 +1,4 @@
-diff -urpN -X linux-5.15.157/Documentation/dontdiff linux-5.15.157-vanilla/arch/x86/entry/syscalls/syscall_64.tbl linux-5.15.157/arch/x86/entry/syscalls/syscall_64.tbl
+diff -urpN linux-5.15.157-vanilla/arch/x86/entry/syscalls/syscall_64.tbl linux-5.15.157/arch/x86/entry/syscalls/syscall_64.tbl
 --- linux-5.15.157-vanilla/arch/x86/entry/syscalls/syscall_64.tbl	2024-04-27 23:05:29.000000000 +0800
 +++ linux-5.15.157/arch/x86/entry/syscalls/syscall_64.tbl	2024-05-07 20:03:14.735636899 +0800
 @@ -343,6 +343,7 @@
@@ -9,7 +9,16 @@ diff -urpN -X linux-5.15.157/Documentation/dontdiff linux-5.15.157-vanilla/arch/
  # don't use numbers 387 through 423, add new calls after the last
  # 'common' entry
  424	common	pidfd_send_signal	sys_pidfd_send_signal
-diff -urpN -X linux-5.15.157/Documentation/dontdiff linux-5.15.157-vanilla/Makefile linux-5.15.157/Makefile
+diff -urpN linux-5.15.157-vanilla/include/linux/syscalls.h linux-5.15.157/include/linux/syscalls.h
+--- linux-5.15.157-vanilla/include/linux/syscalls.h	2024-04-27 23:05:29.000000000 +0800
++++ linux-5.15.157/include/linux/syscalls.h	2024-05-07 15:58:34.090700889 +0800
+@@ -1382,4 +1382,5 @@ int __sys_getsockopt(int fd, int level,
+ 		int __user *optlen);
+ int __sys_setsockopt(int fd, int level, int optname, char __user *optval,
+ 		int optlen);
++asmlinkage long sys_mycall(char __user * buf);
+ #endif
+diff -urpN linux-5.15.157-vanilla/Makefile linux-5.15.157/Makefile
 --- linux-5.15.157-vanilla/Makefile	2024-04-27 23:05:29.000000000 +0800
 +++ linux-5.15.157/Makefile	2024-05-06 21:29:10.943893533 +0800
 @@ -1159,7 +1159,7 @@ export MODORDER := $(extmod_prefix)modul
@@ -21,12 +30,12 @@ diff -urpN -X linux-5.15.157/Documentation/dontdiff linux-5.15.157-vanilla/Makef
  core-$(CONFIG_BLOCK)	+= block/
  core-$(CONFIG_IO_URING)	+= io_uring/
  
-diff -urpN -X linux-5.15.157/Documentation/dontdiff linux-5.15.157-vanilla/mycall/Makefile linux-5.15.157/mycall/Makefile
+diff -urpN linux-5.15.157-vanilla/mycall/Makefile linux-5.15.157/mycall/Makefile
 --- linux-5.15.157-vanilla/mycall/Makefile	1970-01-01 08:00:00.000000000 +0800
 +++ linux-5.15.157/mycall/Makefile	2024-05-06 21:22:38.712404869 +0800
 @@ -0,0 +1 @@
 +obj-y := mycall.o
-diff -urpN -X linux-5.15.157/Documentation/dontdiff linux-5.15.157-vanilla/mycall/mycall.c linux-5.15.157/mycall/mycall.c
+diff -urpN linux-5.15.157-vanilla/mycall/mycall.c linux-5.15.157/mycall/mycall.c
 --- linux-5.15.157-vanilla/mycall/mycall.c	1970-01-01 08:00:00.000000000 +0800
 +++ linux-5.15.157/mycall/mycall.c	2024-05-07 16:01:41.503892259 +0800
 @@ -0,0 +1,75 @@
